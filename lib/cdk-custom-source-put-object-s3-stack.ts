@@ -1,16 +1,39 @@
-import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import * as cdk from "aws-cdk-lib";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as cr from "aws-cdk-lib/custom-resources";
+import { Construct } from "constructs";
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class CdkCustomSourcePutObjectS3Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    const bucket = new s3.Bucket(this, "Bucket", {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'CdkCustomSourcePutObjectS3Queue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
+    new cr.AwsCustomResource(this, "CustomResource", {
+      onCreate: {
+        service: "S3",
+        action: "putObject",
+        parameters: {
+          Bucket: bucket.bucketName,
+          Key: "hello.txt",
+          Body: "Hello, CDK!",
+        },
+        physicalResourceId: cr.PhysicalResourceId.of("HelloWorld"),
+      },
+      onDelete: {
+        service: "S3",
+        action: "deleteObject",
+        parameters: {
+          Bucket: bucket.bucketName,
+          Key: "hello.txt",
+        },
+      },
+      policy: cr.AwsCustomResourcePolicy.fromSdkCalls({
+        resources: cr.AwsCustomResourcePolicy.ANY_RESOURCE,
+      }),
+    });
   }
 }
